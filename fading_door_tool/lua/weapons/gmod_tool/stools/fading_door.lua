@@ -219,7 +219,7 @@ function TOOL:OnRemove(eDoor)
 		end
 	end
 
-	if eDoor.EntityMods and eDoor.EntityMods.WireDupeInfo and eDoors.WireDupeInfo.Wires then
+	if eDoor.EntityMods and eDoor.EntityMods.WireDupeInfo and eDoor.WireDupeInfo.Wires then
 		eDoor.EntityMods.WireDupeInfo.Wires.Fade = nil
 	end
 
@@ -247,6 +247,22 @@ function TOOL:FadingDoor(pPlayer, eEnt, tblStuff)
 		if WireLib then
 			self:SetupWireInputs(eEnt)
 			self:SetupWireOutputs(eEnt)
+			eEnt.funcTriggerInput = eEnt.funcTriggerInput or eEnt.TriggerInput
+			eEnt.TriggerInput = function(...) return _gTool:TriggerInput(...) end
+
+			if not eEnt.IsWire then
+				if not eEnt.funcPreEntityCopy and eEnt.PreEntityCopy then
+					eEnt.funcPreEntityCopy = eEnt.PreEntityCopy
+				end
+
+				eEnt.PreEntityCopy = function(...) return _gTool:PreEntityCopy(...) end
+
+				if not eEnt.funcPostEntityPaste and eEnt.PostEntityPaste then
+					eEnt.funcPostEntityPaste = eEnt.PostEntityPaste
+				end
+
+				eEnt.PostEntityPaste = function(...) return _gTool:PostEntityPaste(...) end
+			end
 		end
 	end
 
