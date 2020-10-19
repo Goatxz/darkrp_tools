@@ -10,9 +10,8 @@ if SERVER then
 	util.AddNetworkString("fading_door_info")
 end
 
-function TOOL:FadeDoor(eDoor, bForce)
+function TOOL:FadeDoor(eDoor)
 	if eDoor.bFaded then return end
-	if eDoor.bPlayersStuck and not bForce then return end
 	eDoor.bFaded = true
 	eDoor.strFadeMaterial = "sprites/heatwave"
 
@@ -23,6 +22,7 @@ function TOOL:FadeDoor(eDoor, bForce)
 	eDoor:SetMaterial(eDoor.strFadeMaterial)
 	eDoor:DrawShadow(false)
 	eDoor:SetNotSolid(true)
+
 	local phys = eDoor:GetPhysicsObject()
 
 	if IsValid(phys) then
@@ -31,16 +31,13 @@ function TOOL:FadeDoor(eDoor, bForce)
 		phys:Sleep()
 	end
 
-	if bForce then return end
-
 	if WireLib then
 		Wire_TriggerOutput(eDoor, "FadeActive", 1)
 	end
 end
 
-function TOOL:SolidDoor(eDoor, bForce)
+function TOOL:SolidDoor(eDoor)
 	if not eDoor.bFaded then return end
-	if eDoor.bPlayersStuck and not bForce then return end
 	eDoor.bFaded = false
 
 	if eDoor:GetMaterial() ~= eDoor.strMaterial then
@@ -55,8 +52,6 @@ function TOOL:SolidDoor(eDoor, bForce)
 		phys:EnableMotion(true)
 		phys:Wake()
 	end
-
-	if bForce then return end
 
 	if WireLib then
 		Wire_TriggerOutput(eDoor, "FadeActive", 0)
@@ -78,9 +73,9 @@ function TOOL:OnKeyReleased(pPlayer, eDoor)
 	end
 
 	if bActive then
-		self:FadeDoor(eDoor)
+		_gTool:FadeDoor(eDoor)
 	else
-		self:SolidDoor(eDoor)
+		_gTool:SolidDoor(eDoor)
 	end
 end
 
@@ -99,9 +94,9 @@ function TOOL:OnKeyPressed(pPlayer, eDoor)
 	end
 
 	if bActive then
-		self:FadeDoor(eDoor)
+		_gTool:FadeDoor(eDoor)
 	else
-		self:SolidDoor(eDoor)
+		_gTool:SolidDoor(eDoor)
 	end
 end
 
@@ -129,12 +124,12 @@ function TOOL:SetupWireInputs(eDoor)
 end
 
 function TOOL:SetupWireOutputs(eDoor)
-	local tblInputs = eDoor.Inputs
-	if not tblInputs then return Wire_CreateInputs(eDoor, {"FadeActive"}) end
+	local tblOutputs = eDoor.Outputs
+	if not tblOutputs then return Wire_CreateOutputs(eDoor, {"FadeActive"}) end
 	local tblNames, tblTypes, tblDescs = {}, {}, {}
 	local intNum
 
-	for _, tblData in pairs(tblInputs) do
+	for _, tblData in pairs(tblOutputs) do
 		intNum = tblData.Num
 		tblNames[intNum] = tblData.Name
 		tblTypes[intNum] = tblData.Type
@@ -142,18 +137,18 @@ function TOOL:SetupWireOutputs(eDoor)
 	end
 
 	table.insert(tblNames, "FadeActive")
-	WireLib.AdjustSpecialInputs(eDoor, tblNames, tblTypes, tblDescs)
+	WireLib.AdjustSpecialOutputs(eDoor, tblNames, tblTypes, tblDescs)
 end
 
 function TOOL:TriggerInput(eDoor, strName, intValue, ...)
-	if name == "Fade" then
-		if value == 0 then
-			return self:OnKeyReleased(nil, eDoor)
+	if strName == "Fade" then
+		if intValue == 0 then
+			return _gTool:OnKeyReleased(nil, eDoor)
 		else
-			return self:OnKeyPressed(nil, eDoor)
+			return _gTool:OnKeyPressed(nil, eDoor)
 		end
-	elseif self.funcTriggerInput then
-		return self:funcTriggerInput(strName, intValue, ...)
+	elseif eDoor.funcTriggerInput then
+		return eDoor:funcTriggerInput(strName, intValue, ...)
 	end
 end
 
@@ -184,7 +179,7 @@ function TOOL:PostEntityPaste(eDoor, pPlayer, eEnt, tblEnts)
 end
 
 function TOOL:OnRemove(eDoor)
-	self:SolidDoor(eDoor)
+	_gTool:SolidDoor(eDoor)
 	eDoor.bFadingDoor = nil
 	eDoor.bKey = nil
 	eDoor.bToggle = nil
@@ -219,7 +214,7 @@ function TOOL:OnRemove(eDoor)
 		end
 	end
 
-	if eDoor.EntityMods and eDoor.EntityMods.WireDupeInfo and eDoor.WireDupeInfo.Wires then
+	if eDoor.EntityMods and eDoor.EntityMods.WireDupeInfo and eDoor.EntityMods.WireDupeInfo.Wires then
 		eDoor.EntityMods.WireDupeInfo.Wires.Fade = nil
 	end
 
@@ -235,18 +230,18 @@ function TOOL:FadingDoor(pPlayer, eEnt, tblStuff)
 			eEnt.OnDieFunctions["UndoFadingDoor" .. eEnt:EntIndex()].Function(eEnt)
 		end
 
-		self:SolidDoor(eEnt)
-		self:RemoveKeys(eEnt)
+		_gTool:SolidDoor(eEnt)
+		_gTool:RemoveKeys(eEnt)
 	else
 		eEnt.bFadingDoor = true
 
 		eEnt:CallOnRemove("Fading Doors", function(eRemoved)
-			self:RemoveKeys(eRemoved)
+			_gTool:RemoveKeys(eRemoved)
 		end)
 
 		if WireLib then
-			self:SetupWireInputs(eEnt)
-			self:SetupWireOutputs(eEnt)
+			_gTool:SetupWireInputs(eEnt)
+			_gTool:SetupWireOutputs(eEnt)
 			eEnt.funcTriggerInput = eEnt.funcTriggerInput or eEnt.TriggerInput
 			eEnt.TriggerInput = function(...) return _gTool:TriggerInput(...) end
 
@@ -274,7 +269,7 @@ function TOOL:FadingDoor(pPlayer, eEnt, tblStuff)
 	eEnt.pFadingDoorOwner = pPlayer
 
 	if eEnt.bReversed then
-		self:FadeDoor(eEnt)
+		_gTool:FadeDoor(eEnt)
 	end
 
 	duplicator.StoreEntityModifier(eEnt, "Fading Door", tblStuff)
@@ -297,7 +292,7 @@ duplicator.RegisterEntityModifier("Fading Door", function(pPlayer, eEnt, tblStuf
 
 if not FadingDoor then
 	function TOOL:LegacyFadingDoor(pPlayer, eEnt, tblStuff)
-		return self:FadingDoor(pPlayer, eEnt, {
+		return _gTool:FadingDoor(pPlayer, eEnt, {
 			key = tblStuff.Key,
 			toggle = tblStuff.Toggle,
 			reversed = tblStuff.Reversed
@@ -325,7 +320,7 @@ function TOOL:LeftClick(tblTrace)
 	local pOwner = self:GetOwner()
 	if not IsValid(pOwner) then return false end
 
-	self:FadingDoor(pOwner, eDoor, {
+	_gTool:FadingDoor(pOwner, eDoor, {
 		key = self:GetClientNumber("key"),
 		toggle = self:GetClientNumber("toggle") == 1,
 		reversed = self:GetClientNumber("reversed") == 1
@@ -338,7 +333,7 @@ function TOOL:LeftClick(tblTrace)
 		local pPlayer = tblArgs[2]
 
 		if IsValid(eEnt) then
-			self:OnRemove(eEnt)
+			_gTool:OnRemove(eEnt)
 		end
 	end, {eDoor, pOwner})
 
@@ -412,7 +407,7 @@ function TOOL:Reload(tblTrace)
 		eDoor.OnDieFunctions["UndoFadingDoor" .. eDoor:EntIndex()].Function(eDoor)
 	end
 
-	self:OnRemove(eDoor)
+	_gTool:OnRemove(eDoor)
 
 	return true
 end
@@ -431,7 +426,10 @@ function TOOL:Think()
 	if not tblTrace.Entity or not IsValid(tblTrace.Entity) then return end
 	if tblTrace.Entity:IsPlayer() or tblTrace.HitWorld then return end
 	local eDoor = tblTrace.Entity
-	if not eDoor.bFadingDoor then return end
+	if not eDoor.bFadingDoor then
+		self.tblCache[eDoor] = nil
+		return
+	end
 
 	if not self.tblCache then
 		self.tblCache = {}
