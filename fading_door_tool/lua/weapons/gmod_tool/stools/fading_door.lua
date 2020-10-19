@@ -22,7 +22,6 @@ function TOOL:FadeDoor(eDoor)
 	eDoor:SetMaterial(eDoor.strFadeMaterial)
 	eDoor:DrawShadow(false)
 	eDoor:SetNotSolid(true)
-
 	local phys = eDoor:GetPhysicsObject()
 
 	if IsValid(phys) then
@@ -426,13 +425,15 @@ function TOOL:Think()
 	if not tblTrace.Entity or not IsValid(tblTrace.Entity) then return end
 	if tblTrace.Entity:IsPlayer() or tblTrace.HitWorld then return end
 	local eDoor = tblTrace.Entity
-	if not eDoor.bFadingDoor then
-		self.tblCache[eDoor] = nil
-		return
-	end
 
 	if not self.tblCache then
 		self.tblCache = {}
+	end
+
+	if not eDoor.bFadingDoor then
+		self.tblCache[eDoor] = nil
+
+		return
 	end
 
 	local tblCached = self.tblCache[eDoor]
